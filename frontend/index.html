@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Spam Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .character-count {
+            margin-top: 10px;
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-box {
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .result-spam {
+            border-left-color: #ff6b6b;
+            background: #ffe0e0;
+        }
+
+        .result-ham {
+            border-left-color: #51cf66;
+            background: #e8f5e9;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .result-label {
+            font-size: 1.3em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .label-spam {
+            color: #ff6b6b;
+        }
+
+        .label-ham {
+            color: #51cf66;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-spam {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .badge-ham {
+            background: #51cf66;
+            color: white;
+        }
+
+        .confidence-section {
+            margin: 15px 0;
+        }
+
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+
+        .progress-spam {
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff5252 100%);
+        }
+
+        .progress-ham {
+            background: linear-gradient(90deg, #51cf66 0%, #40c057 100%);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .error-message {
+            display: none;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            display: none;
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .history-section {
+            margin-top: 20px;
+        }
+
+        .history-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .history-item {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        .history-prediction {
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 4px;
+        }
+
+        .model-info {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .model-info strong {
+            color: #333;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📧 Email Spam Classifier</h1>
+            <p>Intelligent AI-powered spam detection</p>
+        </header>
+
+        <div class="card input-section">
+            <h2>Enter Email Text</h2>
+            
+            <textarea id="emailInput" placeholder="Paste your email content here and I'll analyze if it's spam or legitimate..."></textarea>
+            <div class="character-count">
+                <span id="charCount">0</span> characters
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="classifyEmail()">🔍 Analyze Email</button>
+                <button class="btn-secondary" onclick="clearInput()">Clear</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: white;">Analyzing email...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="result-section" id="resultSection">
+            <div class="card result-box" id="resultBox">
+                <div class="result-header">
+                    <div>
+                        <div class="result-label" id="resultLabel">Spam</div>
+                        <div style="font-size: 0.9em; color: #666; margin-top: 5px;" id="resultSubtext"></div>
+                    </div>
+                    <span class="badge" id="resultBadge">SPAM</span>
+                </div>
+
+                <div class="confidence-section">
+                    <div class="confidence-label">
+                        <span>Confidence Score</span>
+                        <span id="confidencePercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="confidenceFill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Spam Probability</div>
+                        <div class="stat-value" id="probSpam">0%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Ham Probability</div>
+                        <div class="stat-value" id="probHam">0%</div>
+                    </div>
+                </div>
+
+                <div class="model-info">
+                    <strong>Model Accuracy:</strong> <span id="modelAccuracy">96.98%</span> | 
+                    <strong>Classification:</strong> <span id="classType">Naive Bayes</span>
+                </div>
+            </div>
+
+            <div class="history-section" id="historySection" style="display: none;">
+                <h3>Classification History</h3>
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let classificationHistory = [];
+
+        // Update character count
+        document.getElementById('emailInput').addEventListener('input', function() {
+            document.getElementById('charCount').textContent = this.value.length;
+        });
+
+        async function classifyEmail() {
+            const emailText = document.getElementById('emailInput').value.trim();
+            const errorMsg = document.getElementById('errorMessage');
+            const loading = document.getElementById('loading');
+            const resultSection = document.getElementById('resultSection');
+
+            // Clear previous messages
+            errorMsg.classList.remove('show');
+            errorMsg.textContent = '';
+
+            // Validation
+            if (!emailText) {
+                showError('Please enter email text to analyze');
+                return;
+            }
+
+            if (emailText.length < 3) {
+                showError('Email text is too short. Please enter a longer message.');
+                return;
+            }
+
+            // Show loading
+            loading.style.display = 'block';
+            resultSection.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: emailText })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Server error. Make sure backend is running on localhost:5000');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResult(data);
+                    addToHistory(emailText, data.prediction, data.confidence);
+                } else {
+                    showError(data.error || 'Prediction failed');
+                }
+            } catch (error) {
+                showError('Cannot connect to backend. Ensure Flask app is running: python app.py');
+                console.error('Error:', error);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResult(data) {
+            const resultSection = document.getElementById('resultSection');
+            const resultBox = document.getElementById('resultBox');
+            const resultLabel = document.getElementById('resultLabel');
+            const resultBadge = document.getElementById('resultBadge');
+            const resultSubtext = document.getElementById('resultSubtext');
+            const confidencePercent = document.getElementById('confidencePercent');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const probSpam = document.getElementById('probSpam');
+            const probHam = document.getElementById('probHam');
+            const modelAccuracy = document.getElementById('modelAccuracy');
+
+            const isSpam = data.prediction === 'spam';
+            const confidence = data.confidence * 100;
+
+            // Update result
+            resultLabel.textContent = isSpam ? 'SPAM' : 'LEGITIMATE';
+            resultLabel.className = isSpam ? 'result-label label-spam' : 'result-label label-ham';
+            resultSubtext.textContent = isSpam ? 'This email appears to be spam' : 'This email appears to be legitimate';
+
+            // Update badge
+            resultBadge.textContent = isSpam ? '⚠️ SPAM' : '✓ LEGITIMATE';
+            resultBadge.className = isSpam ? 'badge badge-spam' : 'badge badge-ham';
+
+            // Update box styling
+            resultBox.className = isSpam ? 'result-box result-spam' : 'result-box result-ham';
+
+            // Update confidence
+            confidencePercent.textContent = confidence.toFixed(2) + '%';
+            confidenceFill.style.width = confidence + '%';
+            confidenceFill.className = isSpam ? 'progress-fill progress-spam' : 'progress-fill progress-ham';
+
+            // Update probabilities
+            probSpam.textContent = (data.probability_spam * 100).toFixed(2) + '%';
+            probHam.textContent = (data.probability_ham * 100).toFixed(2) + '%';
+
+            // Update model accuracy
+            modelAccuracy.textContent = (data.model_accuracy * 100).toFixed(2) + '%';
+
+            resultSection.style.display = 'block';
+        }
+
+        function addToHistory(email, prediction, confidence) {
+            const preview = email.substring(0, 50) + (email.length > 50 ? '...' : '');
+            classificationHistory.unshift({
+                email: preview,
+                prediction: prediction,
+                confidence: confidence
+            });
+
+            if (classificationHistory.length > 10) {
+                classificationHistory.pop();
+            }
+
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            const historySection = document.getElementById('historySection');
+            const historyList = document.getElementById('historyList');
+
+            if (classificationHistory.length > 0) {
+                historySection.style.display = 'block';
+                historyList.innerHTML = classificationHistory.map((item, index) => `
+                    <div class="history-item">
+                        <span>${item.email}</span>
+                        <span class="history-prediction ${item.prediction === 'spam' ? 'badge-spam' : 'badge-ham'}" style="background: ${item.prediction === 'spam' ? '#ff6b6b' : '#51cf66'}; color: white;">
+                            ${item.prediction.toUpperCase()} (${(item.confidence * 100).toFixed(1)}%)
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function clearInput() {
+            document.getElementById('emailInput').value = '';
+            document.getElementById('charCount').textContent = '0';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.textContent = '❌ ' + message;
+            errorMsg.classList.add('show');
+        }
+
+        // Check backend connection on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (!response.ok) {
+                    showError('⚠️ Backend not connected. Start with: python app.py');
+                }
+            } catch (error) {
+                showError('⚠️ Cannot connect to backend. Ensure Flask is running: python app.py');
+            }
+        });
+    </script>
+</body>
+</html>
